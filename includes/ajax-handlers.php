@@ -371,15 +371,28 @@ function rc_ajax_diagnose_order() {
 	}
 
 	$order_input = sanitize_text_field( wp_unslash( $_POST['order_id'] ?? '' ) );
-	// Aceptar número de pedido (ej. 2026-0090) o ID numérico
 	$order = null;
+
+	// Por ID numérico interno de WC
 	if ( is_numeric( $order_input ) ) {
 		$order = wc_get_order( (int) $order_input );
 	}
+
+	// Por número de pedido (ej. 2026-0090) — wc_get_orders no hace match exacto con HPOS,
+	// por eso buscamos varios candidatos y verificamos el número manualmente.
 	if ( ! $order ) {
-		// Buscar por número de pedido
-		$found = wc_get_orders( [ 'order_number' => $order_input, 'limit' => 1, 'return' => 'objects' ] );
-		$order = $found[0] ?? null;
+		$candidates = wc_get_orders( [
+			'order_number' => $order_input,
+			'limit'        => 20,
+			'status'       => 'any',
+			'return'       => 'objects',
+		] );
+		foreach ( $candidates as $candidate ) {
+			if ( $candidate->get_order_number() === $order_input ) {
+				$order = $candidate;
+				break;
+			}
+		}
 	}
 
 	if ( ! $order ) {
