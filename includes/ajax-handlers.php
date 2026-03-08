@@ -145,15 +145,19 @@ function rc_ajax_clear_month_cache() {
 		'return'       => 'objects',
 	] );
 
+	// Limpiar transient del reporte mensual de Conekta (comisiones del mes)
+	delete_transient( 'rc_rpt_' . md5( $ts_from . '_' . $ts_to ) );
+
 	$cleared = 0;
 	foreach ( $wc_orders as $order ) {
 		// Limpiar meta cacheada de este plugin
 		$order->delete_meta_data( '_rc_card_type' );
 		$order->delete_meta_data( '_rc_card_brand' );
 		$order->delete_meta_data( '_rc_card_last4' );
+		$order->delete_meta_data( '_rc_charge_id' );
 		$order->save_meta_data();
 
-		// Limpiar transient de Conekta
+		// Limpiar transient de Conekta por pedido
 		$conekta_id = rc_find_conekta_id( $order );
 		if ( $conekta_id ) {
 			delete_transient( 'rc_ck_' . md5( $conekta_id ) );
@@ -161,7 +165,7 @@ function rc_ajax_clear_month_cache() {
 		$cleared++;
 	}
 
-	wp_send_json_success( [ 'message' => "Cache limpiada en {$cleared} pedidos." ] );
+	wp_send_json_success( [ 'message' => "Cache limpiada en {$cleared} pedidos (incluye reporte mensual de comisiones)." ] );
 }
 
 // ---------------------------------------------------------------------------

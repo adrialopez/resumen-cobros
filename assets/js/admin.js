@@ -405,8 +405,9 @@
 	}
 
 	function fmt( value ) {
-		const n = parseFloat( value ) || 0;
-		return n.toLocaleString( 'es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 } );
+		const n   = parseFloat( value ) || 0;
+		const sym = ( rcData.currencySymbol || '$' );
+		return sym + n.toLocaleString( 'es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 } );
 	}
 
 	function round2( n ) {
@@ -420,6 +421,7 @@
 			mastercard:         'master-card-24px.svg',
 			amex:               'amex-24px.svg',
 			'american express': 'amex-24px.svg',
+			american_express:   'amex-24px.svg',
 		};
 		const brand = row.brand.toLowerCase();
 		const icon  = iconMap[ brand ];

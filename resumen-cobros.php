@@ -3,7 +3,7 @@
  * Plugin Name: Resumen de Cobros
  * Plugin URI:  https://adria-lopez.com
  * Description: Reporte mensual de cobros dividido por efectivo, tarjeta débito y tarjeta crédito. Integración con Conekta para identificar el tipo de tarjeta.
- * Version:     1.5.1
+ * Version:     1.5.2
  * Author:      Adrià López
  * Author URI:  https://adria-lopez.com
  * License:     GPL-2.0+
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RC_VERSION', '1.5.1' );
+define( 'RC_VERSION', '1.5.2' );
 define( 'RC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -70,9 +70,10 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 	);
 
 	wp_localize_script( 'rc-admin', 'rcData', [
-		'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-		'nonce'     => wp_create_nonce( 'rc_nonce' ),
-		'pluginUrl' => RC_PLUGIN_URL,
+		'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+		'nonce'          => wp_create_nonce( 'rc_nonce' ),
+		'pluginUrl'      => RC_PLUGIN_URL,
+		'currencySymbol' => html_entity_decode( get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8' ),
 	] );
 } );
 
