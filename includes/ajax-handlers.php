@@ -53,6 +53,10 @@ function rc_ajax_get_report() {
 	// Cliente Conekta (solo si hay API key configurada)
 	$conekta = ( $api_key !== '' ) ? new RC_Conekta_Client( $api_key ) : null;
 
+	// Obtener comisiones reales del mes desde el endpoint de reportes de Conekta
+	// Retorna array keyed por charge_id (hex) → [ commission, deposit_amount ]
+	$monthly_reports = $conekta ? $conekta->get_month_payments( $ts_from, $ts_to ) : [];
+
 	$sections = [
 		'credito'  => [],
 		'debito'   => [],
@@ -68,21 +72,28 @@ function rc_ajax_get_report() {
 			$sections['efectivo'][] = $row;
 
 		} elseif ( in_array( $pm_id, $card_methods, true ) ) {
-			// Determinar débito vs crédito + fee real desde Conekta
+			// Determinar débito vs crédito desde Conekta API
 			[ $card_type, $conekta_info ] = rc_resolve_card_type( $order, $conekta );
 
 			$row['card_type']    = $card_type;
 			$row['brand']        = $order->get_meta( '_rc_card_brand' );
 			$row['last4']        = $order->get_meta( '_rc_card_last4' );
 
-			// Usar fee real de Conekta (null si no disponible — no se calcula)
-			$row['conekta_fee'] = ( $conekta_info !== null && $conekta_info['fee'] !== null )
-				? $conekta_info['fee']
+			// Buscar comisión real en el reporte mensual usando el charge_id hexadecimal
+			$charge_id    = $conekta_info['charge_id'] ?? $order->get_meta( '_rc_charge_id' );
+			$report_entry = ( $charge_id && isset( $monthly_reports[ $charge_id ] ) )
+				? $monthly_reports[ $charge_id ]
 				: null;
-			$row['fee_source']  = ( $row['conekta_fee'] !== null ) ? 'conekta' : 'none';
-			$row['bbva_net']    = ( $row['conekta_fee'] !== null )
-				? round( $row['total'] - $row['conekta_fee'], 2 )
-				: null;
+
+			$row['conekta_fee'] = $report_entry ? $report_entry['commission']     : null;
+			$row['bbva_net']    = $report_entry ? $report_entry['deposit_amount'] : null;
+			$row['fee_source']  = $report_entry ? 'reports' : 'none';
+
+			// Guardar charge_id en meta para futuras consultas sin llamada a API
+			if ( $charge_id && ! $order->get_meta( '_rc_charge_id' ) ) {
+				$order->update_meta_data( '_rc_charge_id', $charge_id );
+				$order->save_meta_data();
+			}
 
 			$sections[ $card_type ][] = $row;
 

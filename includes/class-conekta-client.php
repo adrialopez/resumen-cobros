@@ -5,14 +5,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Cliente HTTP simple para la API de Conekta v2.
- * Obtiene tipo de tarjeta (crédito/débito), marca, últimos 4 dígitos y comisión real de Conekta.
- * Los resultados se cachean en transients 24h para evitar llamadas repetidas.
+ * Cliente HTTP para la API de Conekta v2 y el servicio de reportes.
+ * - get_payment_info(): tipo de tarjeta, marca, charge_id interno.
+ * - get_month_payments(): comisión y depósito real desde /reports/v1/payments.
  */
 class RC_Conekta_Client {
 
 	private string $api_key;
-	private string $base_url = 'https://api.conekta.io';
+	private string $base_url    = 'https://api.conekta.io';
+	private string $reports_url = 'https://services.conekta.com';
 
 	public function __construct( string $api_key ) {
 		$this->api_key = $api_key;
@@ -20,9 +21,7 @@ class RC_Conekta_Client {
 
 	/**
 	 * Obtiene los datos del pago desde Conekta API.
-	 *
-	 * @param string $conekta_id  ID de order (ord_xxx) o charge (ch_xxx) de Conekta.
-	 * @return array|null  Keys: account_type (credit|debit), brand, last4, fee (MXN float), fee_source. Null si falla.
+	 * Retorna: account_type (credit|debit), brand, last4, charge_id (hex), fee, fee_source.
 	 */
 	public function get_payment_info( string $conekta_id ): ?array {
 		if ( empty( $conekta_id ) ) {
@@ -33,11 +32,9 @@ class RC_Conekta_Client {
 		$cached    = get_transient( $cache_key );
 
 		if ( false !== $cached ) {
-			// '' significa "consultado y no encontrado" — no reintentar hasta que expire (1h)
 			return ( $cached !== '' ) ? $cached : null;
 		}
 
-		// Rutas según el tipo de ID
 		$endpoints = str_starts_with( $conekta_id, 'ch_' )
 			? [ '/charges/' . urlencode( $conekta_id ) ]
 			: [ '/orders/' . urlencode( $conekta_id ), '/charges/' . urlencode( $conekta_id ) ];
@@ -50,13 +47,72 @@ class RC_Conekta_Client {
 			}
 		}
 
-		// No encontrado — cachear vacío 1h para no repetir
 		set_transient( $cache_key, '', HOUR_IN_SECONDS );
 		return null;
 	}
 
 	/**
-	 * Hace la llamada HTTP y extrae los datos del pago.
+	 * Obtiene todos los pagos del mes desde el endpoint de reportes de Conekta.
+	 * Retorna un array keyed por charge_id → [ commission (MXN), deposit_amount (MXN) ].
+	 * Los montos vienen en centavos desde la API y se convierten a MXN.
+	 *
+	 * @param int $ts_from  Unix timestamp inicio del período.
+	 * @param int $ts_to    Unix timestamp fin del período.
+	 */
+	public function get_month_payments( int $ts_from, int $ts_to ): array {
+		$cache_key = 'rc_rpt_' . md5( $ts_from . '_' . $ts_to );
+		$cached    = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		$results = [];
+		$url     = add_query_arg(
+			[
+				'from' => $ts_from * 1000, // ms
+				'to'   => $ts_to * 1000,
+				'size' => 1000,
+			],
+			$this->reports_url . '/reports/v1/payments'
+		);
+
+		while ( $url ) {
+			$response = wp_remote_get( $url, [
+				'headers' => [
+					'Authorization' => 'Bearer ' . $this->api_key,
+					'Accept'        => 'application/vnd.conekta-v2.2.0+json',
+					'Content-Type'  => 'application/json',
+				],
+				'timeout' => 30,
+			] );
+
+			if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
+				break;
+			}
+
+			$body = json_decode( wp_remote_retrieve_body( $response ), true );
+			if ( ! $body || empty( $body['data'] ) ) {
+				break;
+			}
+
+			foreach ( $body['data'] as $item ) {
+				if ( ! empty( $item['charge_id'] ) ) {
+					$results[ $item['charge_id'] ] = [
+						'commission'     => isset( $item['commission'] )     ? round( $item['commission'] / 100, 2 )     : null,
+						'deposit_amount' => isset( $item['deposit_amount'] ) ? round( $item['deposit_amount'] / 100, 2 ) : null,
+					];
+				}
+			}
+
+			$url = ! empty( $body['has_more'] ) ? ( $body['next_page_url'] ?? null ) : null;
+		}
+
+		set_transient( $cache_key, $results, HOUR_IN_SECONDS );
+		return $results;
+	}
+
+	/**
+	 * Hace la llamada HTTP y extrae los datos del pago (tipo tarjeta, marca, charge_id).
 	 */
 	private function fetch_endpoint( string $endpoint ): ?array {
 		$response = wp_remote_get(
@@ -82,38 +138,29 @@ class RC_Conekta_Client {
 			return null;
 		}
 
-		// Charge endpoint: payment_method y fee en raíz
+		// Charge endpoint: payment_method en raíz
 		if ( isset( $body['payment_method'] ) && isset( $body['amount'] ) ) {
-			$pm  = $body['payment_method'];
-			$fee = isset( $body['fee'] ) ? round( $body['fee'] / 100, 2 ) : null; // centavos → MXN
-			return $this->build_result( $pm, $fee );
+			$pm        = $body['payment_method'];
+			$charge_id = $body['id'] ?? null;
+			return $this->build_result( $pm, $charge_id );
 		}
 
 		// Order endpoint: charges.data[0]
 		if ( isset( $body['charges']['data'][0] ) ) {
 			$charge    = $body['charges']['data'][0];
 			$pm        = $charge['payment_method'] ?? null;
-			$fee       = isset( $charge['fee'] ) ? round( $charge['fee'] / 100, 2 ) : null;
-
-			// Si la fee no vino en el order, buscarla directamente en el charge
-			if ( $fee === null && isset( $charge['id'] ) ) {
-				$charge_detail = $this->fetch_endpoint( '/charges/' . urlencode( $charge['id'] ) );
-				if ( $charge_detail !== null ) {
-					$fee = $charge_detail['fee'];
-				}
-			}
-
+			$charge_id = $charge['id'] ?? null; // hex charge ID, ej. 69a658c59a5ff900163e56a1
 			if ( $pm ) {
-				return $this->build_result( $pm, $fee );
+				return $this->build_result( $pm, $charge_id );
 			}
 		}
 
 		return null;
 	}
 
-	private function build_result( array $pm, ?float $fee ): array {
+	private function build_result( array $pm, ?string $charge_id ): array {
 		// 'type' es 'debit'|'credit' (campo explícito de Conekta).
-		// 'account_type' puede ser un string del banco, ej. 'SWITCH BANAMEX' — no usar para clasificar.
+		// 'account_type' puede ser un string del banco, ej. 'SWITCH BANAMEX'.
 		$raw_type = strtolower( $pm['type'] ?? $pm['account_type'] ?? 'credit' );
 		$type     = str_contains( $raw_type, 'debit' ) ? 'debit' : 'credit';
 
@@ -122,8 +169,9 @@ class RC_Conekta_Client {
 			'brand'        => strtolower( $pm['brand'] ?? '' ),
 			'last4'        => $pm['last4'] ?? '',
 			'name'         => $pm['name'] ?? '',
-			'fee'          => $fee,
-			'fee_source'   => $fee !== null ? 'conekta' : 'calculated',
+			'charge_id'    => $charge_id, // ID hexadecimal del cargo (para cruzar con reportes)
+			'fee'          => null,        // la fee viene de get_month_payments(), no de aquí
+			'fee_source'   => 'reports',
 		];
 	}
 }

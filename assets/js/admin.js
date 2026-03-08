@@ -415,15 +415,19 @@
 
 	function cardInfo( row ) {
 		if ( ! row.brand ) return '—';
-		const brandMap = {
-			visa:             { label: 'Visa',             color: '#1a1f71', bg: '#e8eaf6' },
-			mastercard:       { label: 'Mastercard',       color: '#eb001b', bg: '#fff0f0' },
-			amex:             { label: 'Amex',             color: '#007bc1', bg: '#e6f3fb' },
-			'american express': { label: 'Amex',          color: '#007bc1', bg: '#e6f3fb' },
-			carnet:           { label: 'Carnet',           color: '#006847', bg: '#e6f4ef' },
+		const iconMap = {
+			visa:               'visa-24px.svg',
+			mastercard:         'master-card-24px.svg',
+			amex:               'amex-24px.svg',
+			'american express': 'amex-24px.svg',
 		};
-		const b = brandMap[ row.brand.toLowerCase() ] || { label: row.brand.toUpperCase(), color: '#555', bg: '#f3f4f6' };
-		return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.03em;background:' + b.bg + ';color:' + b.color + ';">' + b.label + '</span>';
+		const brand = row.brand.toLowerCase();
+		const icon  = iconMap[ brand ];
+		if ( icon ) {
+			return '<img src="' + rcData.pluginUrl + 'assets/img/' + icon + '" alt="' + escHtml( row.brand ) + '" style="height:24px;vertical-align:middle;">';
+		}
+		// Fallback texto para marcas sin icono (carnet, etc.)
+		return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#f3f4f6;color:#555;">' + escHtml( row.brand.toUpperCase() ) + '</span>';
 	}
 
 	// -----------------------------------------------------------------------
