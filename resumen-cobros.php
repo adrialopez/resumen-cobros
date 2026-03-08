@@ -3,7 +3,7 @@
  * Plugin Name: Resumen de Cobros
  * Plugin URI:  https://adria-lopez.com
  * Description: Reporte mensual de cobros dividido por efectivo, tarjeta débito y tarjeta crédito. Integración con Conekta para identificar el tipo de tarjeta.
- * Version:     1.3.1
+ * Version:     1.4.0
  * Author:      Adrià López
  * Author URI:  https://adria-lopez.com
  * License:     GPL-2.0+
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RC_VERSION', '1.3.1' );
+define( 'RC_VERSION', '1.4.0' );
 define( 'RC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -147,9 +147,6 @@ function rc_render_settings() {
 		update_option( 'rc_cash_methods',        sanitize_text_field( wp_unslash( $_POST['rc_cash_methods'] ?? 'cod' ) ) );
 		update_option( 'rc_extra_statuses',      sanitize_text_field( wp_unslash( $_POST['rc_extra_statuses'] ?? '' ) ) );
 		update_option( 'rc_iva_rate',            floatval( str_replace( ',', '.', $_POST['rc_iva_rate'] ?? '16' ) ) / 100 );
-		update_option( 'rc_commission_credit',   floatval( str_replace( ',', '.', $_POST['rc_commission_credit'] ?? '3.6' ) ) / 100 );
-		update_option( 'rc_commission_debit',    floatval( str_replace( ',', '.', $_POST['rc_commission_debit'] ?? '2.9' ) ) / 100 );
-		update_option( 'rc_commission_fixed',    floatval( str_replace( ',', '.', $_POST['rc_commission_fixed'] ?? '3' ) ) );
 
 		echo '<div class="notice notice-success is-dismissible"><p><strong>' . esc_html__( 'Configuración guardada.', 'resumen-cobros' ) . '</strong></p></div>';
 	}
@@ -159,9 +156,6 @@ function rc_render_settings() {
 	$cash_methods   = get_option( 'rc_cash_methods', 'cod' );
 	$extra_statuses = get_option( 'rc_extra_statuses', '' );
 	$iva_rate     = round( floatval( get_option( 'rc_iva_rate', 0.16 ) ) * 100, 2 );
-	$comm_credit  = round( floatval( get_option( 'rc_commission_credit', 0.036 ) ) * 100, 3 );
-	$comm_debit   = round( floatval( get_option( 'rc_commission_debit', 0.029 ) ) * 100, 3 );
-	$comm_fixed   = floatval( get_option( 'rc_commission_fixed', 3 ) );
 	?>
 	<div class="wrap">
 		<h1><?php esc_html_e( 'Cobros – Configuración', 'resumen-cobros' ); ?></h1>
@@ -199,32 +193,6 @@ function rc_render_settings() {
 						<p class="description">
 							<?php esc_html_e( 'Ej: key_xxxxxxxx — se usa para obtener el tipo de tarjeta (débito/crédito) desde la API de Conekta. El resultado se guarda en el pedido para no repetir llamadas.', 'resumen-cobros' ); ?>
 						</p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><?php esc_html_e( 'Comisión crédito (%)', 'resumen-cobros' ); ?></th>
-					<td>
-						<input type="number" name="rc_commission_credit"
-							value="<?php echo esc_attr( $comm_credit ); ?>"
-							step="0.001" min="0" max="20" style="width:90px;"> %
-						<p class="description"><?php esc_html_e( 'Porcentaje que cobra Conekta por tarjeta crédito (sin incluir el cargo fijo).', 'resumen-cobros' ); ?></p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><?php esc_html_e( 'Comisión débito (%)', 'resumen-cobros' ); ?></th>
-					<td>
-						<input type="number" name="rc_commission_debit"
-							value="<?php echo esc_attr( $comm_debit ); ?>"
-							step="0.001" min="0" max="20" style="width:90px;"> %
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><?php esc_html_e( 'Cargo fijo por transacción (MXN)', 'resumen-cobros' ); ?></th>
-					<td>
-						<input type="number" name="rc_commission_fixed"
-							value="<?php echo esc_attr( $comm_fixed ); ?>"
-							step="0.01" min="0" max="100" style="width:90px;"> MXN
-						<p class="description"><?php esc_html_e( 'Conekta cobra un cargo fijo por transacción además del porcentaje.', 'resumen-cobros' ); ?></p>
 					</td>
 				</tr>
 			</table>

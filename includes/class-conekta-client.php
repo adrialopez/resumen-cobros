@@ -91,9 +91,18 @@ class RC_Conekta_Client {
 
 		// Order endpoint: charges.data[0]
 		if ( isset( $body['charges']['data'][0] ) ) {
-			$charge = $body['charges']['data'][0];
-			$pm     = $charge['payment_method'] ?? null;
-			$fee    = isset( $charge['fee'] ) ? round( $charge['fee'] / 100, 2 ) : null;
+			$charge    = $body['charges']['data'][0];
+			$pm        = $charge['payment_method'] ?? null;
+			$fee       = isset( $charge['fee'] ) ? round( $charge['fee'] / 100, 2 ) : null;
+
+			// Si la fee no vino en el order, buscarla directamente en el charge
+			if ( $fee === null && isset( $charge['id'] ) ) {
+				$charge_detail = $this->fetch_endpoint( '/charges/' . urlencode( $charge['id'] ) );
+				if ( $charge_detail !== null ) {
+					$fee = $charge_detail['fee'];
+				}
+			}
+
 			if ( $pm ) {
 				return $this->build_result( $pm, $fee );
 			}

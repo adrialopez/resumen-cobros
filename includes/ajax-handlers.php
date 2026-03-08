@@ -1,4 +1,11 @@
-<?php
+// Usar fee real de Conekta (null si no disponible — no se calcula)
+			$row['conekta_fee'] = ( $conekta_info !== null && $conekta_info['fee'] !== null )
+				? $conekta_info['fee']
+				: null;
+			$row['fee_source']  = ( $row['conekta_fee'] !== null ) ? 'conekta' : 'none';
+			$row['bbva_net']    = ( $row['conekta_fee'] !== null )
+				? round( $row['total'] - $row['conekta_fee'], 2 )
+				: null;<?php
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -32,9 +39,6 @@ function rc_ajax_get_report() {
 	$card_methods_raw = get_option( 'rc_card_methods', 'conekta' );
 	$cash_methods_raw = get_option( 'rc_cash_methods', 'cod' );
 	$iva_rate         = floatval( get_option( 'rc_iva_rate', 0.16 ) );
-	$comm_credit      = floatval( get_option( 'rc_commission_credit', 0.036 ) );
-	$comm_debit       = floatval( get_option( 'rc_commission_debit', 0.029 ) );
-	$comm_fixed       = floatval( get_option( 'rc_commission_fixed', 3.0 ) );
 
 	$card_methods = array_filter( array_map( 'trim', explode( ',', $card_methods_raw ) ) );
 	$cash_methods = array_filter( array_map( 'trim', explode( ',', $cash_methods_raw ) ) );
@@ -78,16 +82,14 @@ function rc_ajax_get_report() {
 			$row['brand']        = $order->get_meta( '_rc_card_brand' );
 			$row['last4']        = $order->get_meta( '_rc_card_last4' );
 
-			// Usar fee real de Conekta si está disponible, si no calcular
-			if ( $conekta_info !== null && $conekta_info['fee'] !== null ) {
-				$row['conekta_fee']  = $conekta_info['fee'];
-				$row['fee_source']   = 'conekta';
-			} else {
-				$comm_rate           = ( $card_type === 'debito' ) ? $comm_debit : $comm_credit;
-				$row['conekta_fee']  = round( $row['total'] * $comm_rate + $comm_fixed, 2 );
-				$row['fee_source']   = 'calculated';
-			}
-			$row['bbva_net'] = round( $row['total'] - $row['conekta_fee'], 2 );
+			// Usar fee real de Conekta (null si no disponible — no se calcula)
+			$row['conekta_fee'] = ( $conekta_info !== null && $conekta_info['fee'] !== null )
+				? $conekta_info['fee']
+				: null;
+			$row['fee_source']  = ( $row['conekta_fee'] !== null ) ? 'conekta' : 'none';
+			$row['bbva_net']    = ( $row['conekta_fee'] !== null )
+				? round( $row['total'] - $row['conekta_fee'], 2 )
+				: null;
 
 			$sections[ $card_type ][] = $row;
 

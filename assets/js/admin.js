@@ -187,11 +187,10 @@
 				const badgeCls = row.card_type === 'debito' ? 'rc-badge--debito' : ( row.card_type === 'credito' ? 'rc-badge--credito' : 'rc-badge--unknown' );
 				html += '<td><span class="rc-badge ' + badgeCls + '">' + escHtml( row.card_type || '?' ) + '</span></td>';
 				html += '<td>' + cardInfo( row ) + '</td>';
-				const feeLabel = row.fee_source === 'conekta'
-				? fmt( row.conekta_fee )
-				: fmt( row.conekta_fee ) + ' <span title="Comisión calculada, no confirmada por Conekta" style="color:#999;font-size:10px;">~</span>';
-			html += '<td class="rc-num">' + feeLabel + '</td>';
-			html += '<td class="rc-num">' + fmt( row.bbva_net ) + '</td>';
+				const feeLabel  = row.conekta_fee !== null ? fmt( row.conekta_fee ) : '—';
+			const bbvaLabel = row.bbva_net    !== null ? fmt( row.bbva_net )    : '—';
+			html += '<td class="rc-num">' + feeLabel  + '</td>';
+			html += '<td class="rc-num">' + bbvaLabel + '</td>';
 			} else {
 				html += '<td><span class="rc-badge rc-badge--efectivo">Efectivo</span></td>';
 			}
