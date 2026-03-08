@@ -1,0 +1,250 @@
+/* =========================================================
+   Resumen de Cobros – Estilos admin
+   ========================================================= */
+
+.rc-wrap {
+	max-width: 1400px;
+}
+
+/* Toolbar -------------------------------------------------- */
+.rc-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 16px 0 20px;
+	flex-wrap: wrap;
+}
+
+.rc-label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+	font-size: 13px;
+}
+
+.rc-label select,
+.rc-label input[type="number"] {
+	margin: 0;
+}
+
+/* Estados -------------------------------------------------- */
+.rc-state {
+	padding: 16px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 14px;
+}
+
+.rc-error {
+	color: #d63638;
+}
+
+/* Reporte -------------------------------------------------- */
+#rc-report {
+	margin-top: 8px;
+}
+
+/* Secciones ------------------------------------------------ */
+.rc-section {
+	margin-bottom: 36px;
+}
+
+.rc-section-header {
+	display: flex;
+	align-items: baseline;
+	gap: 16px;
+	padding: 10px 14px;
+	border-radius: 4px 4px 0 0;
+	margin-bottom: 0;
+}
+
+.rc-section-header h2 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	color: #fff;
+	text-transform: uppercase;
+}
+
+.rc-section-header .rc-section-period {
+	font-size: 12px;
+	color: rgba(255,255,255,0.85);
+	font-weight: 400;
+}
+
+/* Colores por sección */
+.rc-section--credito  .rc-section-header { background: #2271b1; }
+.rc-section--debito   .rc-section-header { background: #2a7a3b; }
+.rc-section--efectivo .rc-section-header { background: #996a00; }
+.rc-section--otros    .rc-section-header { background: #777; }
+
+/* Tabla ---------------------------------------------------- */
+.rc-table-wrap {
+	overflow-x: auto;
+}
+
+.rc-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+	border: 1px solid #ddd;
+}
+
+.rc-table th,
+.rc-table td {
+	padding: 7px 10px;
+	border: 1px solid #e0e0e0;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+.rc-table thead th {
+	background: #f6f7f7;
+	font-weight: 700;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #3c434a;
+}
+
+.rc-table tbody tr:nth-child(even) {
+	background: #fafafa;
+}
+
+.rc-table tbody tr:hover {
+	background: #f0f6ff;
+}
+
+/* Columnas numéricas alineadas a la derecha */
+.rc-table .rc-num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Fila de subtotal */
+.rc-row-subtotal td {
+	background: #eef2ff;
+	font-weight: 700;
+	border-top: 2px solid #b4c7f0;
+}
+
+.rc-section--debito   .rc-row-subtotal td { background: #eeffed; border-top-color: #88c99a; }
+.rc-section--efectivo .rc-row-subtotal td { background: #fff8e0; border-top-color: #e6c96a; }
+
+/* Tabla sin datos */
+.rc-empty-section {
+	padding: 12px 14px;
+	font-style: italic;
+	color: #777;
+	background: #fafafa;
+	border: 1px solid #e0e0e0;
+	border-top: none;
+	font-size: 13px;
+}
+
+/* Badge de tipo tarjeta ----------------------------------- */
+.rc-badge {
+	display: inline-block;
+	padding: 2px 7px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+}
+
+.rc-badge--credito  { background: #dbeafe; color: #1e40af; }
+.rc-badge--debito   { background: #dcfce7; color: #166534; }
+.rc-badge--efectivo { background: #fef9c3; color: #854d0e; }
+.rc-badge--unknown  { background: #f3f4f6; color: #6b7280; }
+
+/* Tabla resumen ------------------------------------------- */
+.rc-summary {
+	margin-top: 8px;
+	border: 2px solid #2271b1;
+	border-radius: 4px;
+	overflow: hidden;
+	max-width: 620px;
+}
+
+.rc-summary-title {
+	background: #2271b1;
+	color: #fff;
+	padding: 8px 14px;
+	font-weight: 700;
+	font-size: 14px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.rc-summary table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.rc-summary table td {
+	padding: 7px 14px;
+	border-bottom: 1px solid #e8edf2;
+}
+
+.rc-summary table tr:last-child td {
+	border-bottom: none;
+}
+
+.rc-summary table td:last-child {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+}
+
+.rc-summary-label {
+	color: #3c434a;
+}
+
+.rc-summary-label .rc-letter {
+	display: inline-block;
+	width: 22px;
+	height: 22px;
+	line-height: 22px;
+	text-align: center;
+	border-radius: 50%;
+	font-weight: 700;
+	font-size: 12px;
+	margin-right: 6px;
+}
+
+.rc-letter--a { background: #fef9c3; color: #854d0e; }
+.rc-letter--b { background: #dcfce7; color: #166534; }
+.rc-letter--c { background: #dbeafe; color: #1e40af; }
+
+.rc-summary-row--total td {
+	background: #eef2ff;
+	font-weight: 700;
+	font-size: 14px;
+}
+
+.rc-summary-row--sin-iva td  { color: #555; }
+.rc-summary-row--iva td      { color: #555; }
+.rc-summary-row--con-iva td  { background: #f0f6ff; font-weight: 700; }
+.rc-summary-row--comparacion td {
+	background: #f0fdf4;
+	font-weight: 700;
+}
+
+/* Aviso sin API key --------------------------------------- */
+.rc-notice-no-apikey {
+	background: #fffbeb;
+	border-left: 4px solid #f59e0b;
+	padding: 10px 14px;
+	margin-bottom: 16px;
+	font-size: 13px;
+	border-radius: 0 4px 4px 0;
+}
+
+.rc-notice-no-apikey a {
+	font-weight: 600;
+}
