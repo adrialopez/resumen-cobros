@@ -3,7 +3,7 @@
  * Plugin Name: Resumen de Cobros
  * Plugin URI:  https://adria-lopez.com
  * Description: Reporte mensual de cobros dividido por efectivo, tarjeta débito y tarjeta crédito. Integración con Conekta para identificar el tipo de tarjeta.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      Adrià López
  * Author URI:  https://adria-lopez.com
  * License:     GPL-2.0+
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RC_VERSION', '1.1.0' );
+define( 'RC_VERSION', '1.2.0' );
 define( 'RC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -259,6 +259,15 @@ function rc_render_settings() {
 
 			<?php submit_button( __( 'Guardar configuración', 'resumen-cobros' ), 'primary', 'rc_save' ); ?>
 		</form>
+
+		<hr>
+		<h2><?php esc_html_e( 'Diagnóstico de pedido', 'resumen-cobros' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Introduce un número de pedido (ej: 2026-0090) para ver qué meta de Conekta tiene guardada y qué devuelve la API. Útil para depurar por qué un pedido no se clasifica bien.', 'resumen-cobros' ); ?></p>
+		<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+			<input type="text" id="rc-diag-order" placeholder="<?php esc_attr_e( 'Número de pedido…', 'resumen-cobros' ); ?>" style="width:220px;">
+			<button type="button" id="rc-diag-btn" class="button"><?php esc_html_e( 'Diagnosticar', 'resumen-cobros' ); ?></button>
+		</div>
+		<pre id="rc-diag-result" style="background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:4px;overflow:auto;max-height:400px;display:none;font-size:12px;"></pre>
 	</div>
 	<?php
 }

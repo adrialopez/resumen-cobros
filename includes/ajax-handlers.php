@@ -23,9 +23,9 @@ function rc_ajax_get_report() {
 		wp_send_json_error( [ 'message' => 'Mes inválido.' ], 400 );
 	}
 
-	// Rango del mes completo
-	$date_from  = sprintf( '%04d-%02d-01', $year, $month );
-	$date_to    = date( 'Y-m-t', mktime( 0, 0, 0, $month, 1, $year ) );
+	// Rango del mes completo en timestamps (más fiable con HPOS)
+	$ts_from = mktime( 0,  0,  0,  $month, 1,                                   $year );
+	$ts_to   = mktime( 23, 59, 59, $month, (int) date( 't', $ts_from ),          $year );
 
 	// Configuración del plugin
 	$api_key          = get_option( 'rc_conekta_api_key', '' );
@@ -43,7 +43,7 @@ function rc_ajax_get_report() {
 	$wc_orders = wc_get_orders( [
 		'limit'        => -1,
 		'status'       => [ 'completed', 'processing' ],
-		'date_created' => $date_from . '...' . $date_to,
+		'date_created' => $ts_from . '...' . $ts_to,
 		'orderby'      => 'date',
 		'order'        => 'ASC',
 		'return'       => 'objects',
@@ -126,12 +126,12 @@ function rc_ajax_clear_month_cache() {
 		wp_send_json_error( [ 'message' => 'Mes/año requeridos.' ], 400 );
 	}
 
-	$date_from = sprintf( '%04d-%02d-01', $year, $month );
-	$date_to   = date( 'Y-m-t', mktime( 0, 0, 0, $month, 1, $year ) );
+	$ts_from = mktime( 0,  0,  0,  $month, 1,                                  $year );
+	$ts_to   = mktime( 23, 59, 59, $month, (int) date( 't', $ts_from ),         $year );
 
 	$wc_orders = wc_get_orders( [
 		'limit'        => -1,
-		'date_created' => $date_from . '...' . $date_to,
+		'date_created' => $ts_from . '...' . $ts_to,
 		'return'       => 'objects',
 	] );
 
@@ -212,19 +212,22 @@ function rc_order_description( WC_Order $order ): string {
  * Prioridad: (1) meta cacheada → (2) meta del plugin Conekta → (3) API de Conekta.
  */
 function rc_resolve_card_type( WC_Order $order, ?RC_Conekta_Client $conekta ): array {
-	// 1. Meta ya guardada por este plugin (solo tipo, sin fee actualizado)
-	$cached_type = $order->get_meta( '_rc_card_type' );
-	if ( in_array( $cached_type, [ 'credito', 'debito' ], true ) ) {
-		// Si tenemos tipo cacheado, intentar refrescar fee desde API si no lo tenemos
-		if ( $conekta ) {
-			$conekta_id = rc_find_conekta_id( $order );
-			if ( $conekta_id ) {
-				$info = $conekta->get_payment_info( $conekta_id );
-				if ( $info ) {
-					return [ $cached_type, $info ];
-				}
+	// Siempre intentar Conekta API primero si está disponible — es la fuente de verdad
+	if ( $conekta ) {
+		$conekta_id = rc_find_conekta_id( $order );
+		if ( $conekta_id !== '' ) {
+			$info = $conekta->get_payment_info( $conekta_id );
+			if ( $info ) {
+				$type = ( $info['account_type'] === 'debit' ) ? 'debito' : 'credito';
+				rc_save_card_type( $order, $type, $info['brand'], $info['last4'] );
+				return [ $type, $info ];
 			}
 		}
+	}
+
+	// Fallback 1: meta guardada previamente (puede ser incorrecta si fue el fallback default)
+	$cached_type = $order->get_meta( '_rc_card_type' );
+	if ( in_array( $cached_type, [ 'credito', 'debito' ], true ) ) {
 		return [ $cached_type, null ];
 	}
 
@@ -353,4 +356,85 @@ function rc_calculate_summary( array $sections ): array {
 	];
 
 	return $totals;
+}
+
+// ---------------------------------------------------------------------------
+// AJAX: diagnóstico de un pedido — muestra meta Conekta y respuesta de API
+// ---------------------------------------------------------------------------
+add_action( 'wp_ajax_rc_diagnose_order', 'rc_ajax_diagnose_order' );
+
+function rc_ajax_diagnose_order() {
+	check_ajax_referer( 'rc_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_woocommerce' ) ) {
+		wp_send_json_error( [ 'message' => 'Sin permisos.' ], 403 );
+	}
+
+	$order_input = sanitize_text_field( wp_unslash( $_POST['order_id'] ?? '' ) );
+	// Aceptar número de pedido (ej. 2026-0090) o ID numérico
+	$order = null;
+	if ( is_numeric( $order_input ) ) {
+		$order = wc_get_order( (int) $order_input );
+	}
+	if ( ! $order ) {
+		// Buscar por número de pedido
+		$found = wc_get_orders( [ 'order_number' => $order_input, 'limit' => 1, 'return' => 'objects' ] );
+		$order = $found[0] ?? null;
+	}
+
+	if ( ! $order ) {
+		wp_send_json_error( [ 'message' => 'Pedido no encontrado: ' . $order_input ] );
+	}
+
+	// Recopilar toda la info relevante
+	$info = [
+		'wc_id'          => $order->get_id(),
+		'wc_number'      => $order->get_order_number(),
+		'payment_method' => $order->get_payment_method(),
+		'payment_title'  => $order->get_payment_method_title(),
+		'transaction_id' => $order->get_transaction_id(),
+		'status'         => $order->get_status(),
+		'date'           => $order->get_date_created() ? $order->get_date_created()->date( 'Y-m-d H:i:s' ) : '',
+		'total'          => $order->get_total(),
+	];
+
+	// Meta relacionada con Conekta
+	$conekta_meta = [];
+	$all_meta     = $order->get_meta_data();
+	foreach ( $all_meta as $meta ) {
+		$data = $meta->get_data();
+		$key  = $data['key'];
+		$val  = is_string( $data['value'] ) ? $data['value'] : json_encode( $data['value'] );
+
+		// Mostrar meta de Conekta o de este plugin, y meta con valores que parecen IDs Conekta
+		if (
+			str_contains( strtolower( $key ), 'conekta' ) ||
+			str_starts_with( $key, '_rc_' ) ||
+			str_starts_with( (string) $val, 'ord_' ) ||
+			str_starts_with( (string) $val, 'ch_' )
+		) {
+			$conekta_meta[ $key ] = $val;
+		}
+	}
+	$info['conekta_meta'] = $conekta_meta;
+	$info['found_conekta_id'] = rc_find_conekta_id( $order );
+
+	// Llamada a Conekta API si hay key y ID
+	$api_key    = get_option( 'rc_conekta_api_key', '' );
+	$conekta_id = $info['found_conekta_id'];
+
+	if ( $api_key && $conekta_id ) {
+		// Limpiar transient para forzar llamada fresca
+		delete_transient( 'rc_ck_' . md5( $conekta_id ) );
+
+		$client          = new RC_Conekta_Client( $api_key );
+		$api_result      = $client->get_payment_info( $conekta_id );
+		$info['api_response'] = $api_result ?: 'null — la API no devolvió datos';
+	} elseif ( ! $api_key ) {
+		$info['api_response'] = 'No hay API key configurada.';
+	} else {
+		$info['api_response'] = 'No se encontró ID de Conekta en el pedido.';
+	}
+
+	wp_send_json_success( $info );
 }

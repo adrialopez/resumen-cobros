@@ -421,4 +421,47 @@
 		return parts.join( ' ' ) || '—';
 	}
 
+	// -----------------------------------------------------------------------
+	// Diagnóstico de pedido (solo en página de configuración)
+	// -----------------------------------------------------------------------
+	document.addEventListener( 'DOMContentLoaded', function () {
+		const btn    = document.getElementById( 'rc-diag-btn' );
+		const input  = document.getElementById( 'rc-diag-order' );
+		const result = document.getElementById( 'rc-diag-result' );
+		if ( ! btn ) return;
+
+		btn.addEventListener( 'click', function () {
+			const orderId = input.value.trim();
+			if ( ! orderId ) return;
+
+			btn.disabled    = true;
+			btn.textContent = 'Consultando…';
+			result.style.display = 'none';
+
+			const body = new URLSearchParams( {
+				action:   'rc_diagnose_order',
+				nonce:    rcData.nonce,
+				order_id: orderId,
+			} );
+
+			fetch( rcData.ajaxUrl, { method: 'POST', body } )
+				.then( r => r.json() )
+				.then( data => {
+					btn.disabled    = false;
+					btn.textContent = 'Diagnosticar';
+					result.textContent   = JSON.stringify( data.success ? data.data : data, null, 2 );
+					result.style.display = '';
+				} )
+				.catch( err => {
+					btn.disabled    = false;
+					btn.textContent = 'Diagnosticar';
+					result.textContent   = 'Error: ' + err.message;
+					result.style.display = '';
+				} );
+		} );
+
+		// Enter key
+		input.addEventListener( 'keydown', e => { if ( e.key === 'Enter' ) btn.click(); } );
+	} );
+
 } )();
