@@ -103,12 +103,17 @@ class RC_Conekta_Client {
 	}
 
 	private function build_result( array $pm, ?float $fee ): array {
+		// 'type' es 'debit'|'credit' (campo explícito de Conekta).
+		// 'account_type' puede ser un string del banco, ej. 'SWITCH BANAMEX' — no usar para clasificar.
+		$raw_type = strtolower( $pm['type'] ?? $pm['account_type'] ?? 'credit' );
+		$type     = str_contains( $raw_type, 'debit' ) ? 'debit' : 'credit';
+
 		return [
-			'account_type' => strtolower( $pm['account_type'] ?? 'credit' ), // 'credit' | 'debit'
+			'account_type' => $type,
 			'brand'        => strtolower( $pm['brand'] ?? '' ),
 			'last4'        => $pm['last4'] ?? '',
 			'name'         => $pm['name'] ?? '',
-			'fee'          => $fee,          // null = Conekta no lo devolvió, usar cálculo
+			'fee'          => $fee,
 			'fee_source'   => $fee !== null ? 'conekta' : 'calculated',
 		];
 	}
