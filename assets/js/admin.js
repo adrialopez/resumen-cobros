@@ -149,7 +149,7 @@
 
 		html += '<div class="rc-table-wrap"><table class="rc-table"><thead><tr>';
 
-		// Cabeceras
+		// Cabeceras — comunes a todas las secciones
 		html += '<th>#</th>'
 			+ '<th>Recibo</th>'
 			+ '<th>Fecha</th>'
@@ -157,15 +157,14 @@
 			+ '<th>Descripción</th>'
 			+ '<th class="rc-num">Valor (sin IVA)</th>'
 			+ '<th class="rc-num">IVA (16%)</th>'
-			+ '<th class="rc-num">Total</th>';
+			+ '<th class="rc-num">Total</th>'
+			+ '<th>Estado</th>';
 
 		if ( isCard ) {
 			html += '<th>Tipo</th>'
 				+ '<th>Tarjeta</th>'
 				+ '<th class="rc-num">Comis. Conekta</th>'
 				+ '<th class="rc-num">Neto BBVA</th>';
-		} else {
-			html += '<th>Estado</th>';
 		}
 
 		html += '</tr></thead><tbody>';
@@ -182,35 +181,33 @@
 			html += '<td class="rc-num">' + fmt( row.base ) + '</td>';
 			html += '<td class="rc-num">' + fmt( row.iva ) + '</td>';
 			html += '<td class="rc-num">' + fmt( row.total ) + '</td>';
+			html += '<td><span class="rc-badge rc-badge--status">' + escHtml( statusLabel( row.status ) ) + '</span></td>';
 
 			if ( isCard ) {
 				const badgeCls = row.card_type === 'debito' ? 'rc-badge--debito' : ( row.card_type === 'credito' ? 'rc-badge--credito' : 'rc-badge--unknown' );
 				html += '<td><span class="rc-badge ' + badgeCls + '">' + escHtml( row.card_type || '?' ) + '</span></td>';
 				html += '<td>' + cardInfo( row ) + '</td>';
 				const feeLabel  = row.conekta_fee !== null ? fmt( row.conekta_fee ) : '—';
-			const bbvaLabel = row.bbva_net    !== null ? fmt( row.bbva_net )    : '—';
-			html += '<td class="rc-num">' + feeLabel  + '</td>';
-			html += '<td class="rc-num">' + bbvaLabel + '</td>';
-			} else {
-				html += '<td><span class="rc-badge rc-badge--efectivo">Efectivo</span></td>';
+				const bbvaLabel = row.bbva_net    !== null ? fmt( row.bbva_net )    : '—';
+				html += '<td class="rc-num">' + feeLabel  + '</td>';
+				html += '<td class="rc-num">' + bbvaLabel + '</td>';
 			}
 
 			html += '</tr>';
 		} );
 
-		// Fila subtotal
+		// Fila subtotal — colspan=5 cubre #..Descripción, luego 3 nums, Estado vacío
 		html += '<tr class="rc-row-subtotal">';
 		html += '<td colspan="5"><strong>TOTAL ' + escHtml( cfg.label.toUpperCase() ) + '</strong></td>';
 		html += '<td class="rc-num"><strong>' + fmt( totals.base ) + '</strong></td>';
 		html += '<td class="rc-num"><strong>' + fmt( totals.iva ) + '</strong></td>';
 		html += '<td class="rc-num"><strong>' + fmt( totals.total ) + '</strong></td>';
+		html += '<td></td>'; // Estado vacío en subtotal
 
 		if ( isCard ) {
-			html += '<td colspan="2"></td>';
+			html += '<td colspan="2"></td>'; // Tipo + Tarjeta
 			html += '<td class="rc-num"><strong>' + fmt( totals.conekta_fee ) + '</strong></td>';
 			html += '<td class="rc-num"><strong>' + fmt( totals.bbva_net ) + '</strong></td>';
-		} else {
-			html += '<td></td>';
 		}
 
 		html += '</tr>';
@@ -412,6 +409,21 @@
 
 	function round2( n ) {
 		return Math.round( ( parseFloat( n ) || 0 ) * 100 ) / 100;
+	}
+
+	function statusLabel( status ) {
+		const map = {
+			completed:  'Completado',
+			processing: 'En proceso',
+			'on-hold':  'En espera',
+			cancelled:  'Cancelado',
+			refunded:   'Reembolsado',
+			failed:     'Fallido',
+			pending:    'Pendiente',
+			recogido:   'Recogido',
+			entregado:  'Entregado',
+		};
+		return map[ status ] || status || '—';
 	}
 
 	function cardInfo( row ) {

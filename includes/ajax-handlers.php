@@ -196,6 +196,7 @@ function rc_build_row( WC_Order $order, float $iva_rate ): array {
 		'base'           => round( $base, 2 ),
 		'iva'            => round( $tax, 2 ),
 		'total'          => round( $total, 2 ),
+		'status'         => $order->get_status(),
 		'payment_method' => $order->get_payment_method_title(),
 		'transaction_id' => $order->get_transaction_id(),
 		'card_type'      => '',
