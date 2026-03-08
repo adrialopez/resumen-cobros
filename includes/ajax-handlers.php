@@ -39,10 +39,14 @@ function rc_ajax_get_report() {
 	$card_methods = array_filter( array_map( 'trim', explode( ',', $card_methods_raw ) ) );
 	$cash_methods = array_filter( array_map( 'trim', explode( ',', $cash_methods_raw ) ) );
 
-	// Pedidos del mes (completados + procesando)
+	// Pedidos del mes — estados base + estados extra configurados
+	$extra_statuses_raw = get_option( 'rc_extra_statuses', '' );
+	$extra_statuses     = array_filter( array_map( 'trim', explode( ',', $extra_statuses_raw ) ) );
+	$order_statuses     = array_values( array_unique( array_merge( [ 'completed', 'processing' ], $extra_statuses ) ) );
+
 	$wc_orders = wc_get_orders( [
 		'limit'        => -1,
-		'status'       => [ 'completed', 'processing' ],
+		'status'       => $order_statuses,
 		'date_created' => $ts_from . '...' . $ts_to,
 		'orderby'      => 'date',
 		'order'        => 'ASC',
@@ -440,9 +444,41 @@ function rc_ajax_diagnose_order() {
 		// Limpiar transient para forzar llamada fresca
 		delete_transient( 'rc_ck_' . md5( $conekta_id ) );
 
-		$client          = new RC_Conekta_Client( $api_key );
-		$api_result      = $client->get_payment_info( $conekta_id );
-		$info['api_response'] = $api_result ?: 'null — la API no devolvió datos';
+		// Hacer llamada directa para exponer código HTTP y cuerpo raw (útil para depurar 401/404)
+		$base_url  = 'https://api.conekta.io';
+		$endpoints = str_starts_with( $conekta_id, 'ch_' )
+			? [ '/charges/' . urlencode( $conekta_id ) ]
+			: [ '/orders/' . urlencode( $conekta_id ), '/charges/' . urlencode( $conekta_id ) ];
+
+		$raw_calls = [];
+		foreach ( $endpoints as $ep ) {
+			$response   = wp_remote_get( $base_url . $ep, [
+				'headers' => [
+					'Authorization' => 'Bearer ' . $api_key,
+					'Accept'        => 'application/vnd.conekta-v2.2.0+json',
+					'Content-Type'  => 'application/json',
+				],
+				'timeout' => 15,
+			] );
+
+			if ( is_wp_error( $response ) ) {
+				$raw_calls[ $ep ] = [ 'error' => $response->get_error_message() ];
+			} else {
+				$http_code  = wp_remote_retrieve_response_code( $response );
+				$body       = wp_remote_retrieve_body( $response );
+				$decoded    = json_decode( $body, true );
+				$raw_calls[ $ep ] = [
+					'http_code' => $http_code,
+					'body'      => $decoded ?: $body,
+				];
+			}
+		}
+		$info['api_raw'] = $raw_calls;
+
+		// También intentar parsear como antes para ver resultado limpio
+		$client               = new RC_Conekta_Client( $api_key );
+		$api_result           = $client->get_payment_info( $conekta_id );
+		$info['api_response'] = $api_result ?: 'null — la API no devolvió datos (ver api_raw para detalles)';
 	} elseif ( ! $api_key ) {
 		$info['api_response'] = 'No hay API key configurada.';
 	} else {

@@ -3,7 +3,7 @@
  * Plugin Name: Resumen de Cobros
  * Plugin URI:  https://adria-lopez.com
  * Description: Reporte mensual de cobros dividido por efectivo, tarjeta débito y tarjeta crédito. Integración con Conekta para identificar el tipo de tarjeta.
- * Version:     1.2.1
+ * Version:     1.3.0
  * Author:      Adrià López
  * Author URI:  https://adria-lopez.com
  * License:     GPL-2.0+
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RC_VERSION', '1.2.1' );
+define( 'RC_VERSION', '1.3.0' );
 define( 'RC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -145,6 +145,7 @@ function rc_render_settings() {
 		update_option( 'rc_conekta_api_key',     sanitize_text_field( wp_unslash( $_POST['rc_conekta_api_key'] ?? '' ) ) );
 		update_option( 'rc_card_methods',        sanitize_text_field( wp_unslash( $_POST['rc_card_methods'] ?? 'conekta' ) ) );
 		update_option( 'rc_cash_methods',        sanitize_text_field( wp_unslash( $_POST['rc_cash_methods'] ?? 'cod' ) ) );
+		update_option( 'rc_extra_statuses',      sanitize_text_field( wp_unslash( $_POST['rc_extra_statuses'] ?? '' ) ) );
 		update_option( 'rc_iva_rate',            floatval( str_replace( ',', '.', $_POST['rc_iva_rate'] ?? '16' ) ) / 100 );
 		update_option( 'rc_commission_credit',   floatval( str_replace( ',', '.', $_POST['rc_commission_credit'] ?? '3.6' ) ) / 100 );
 		update_option( 'rc_commission_debit',    floatval( str_replace( ',', '.', $_POST['rc_commission_debit'] ?? '2.9' ) ) / 100 );
@@ -153,9 +154,10 @@ function rc_render_settings() {
 		echo '<div class="notice notice-success is-dismissible"><p><strong>' . esc_html__( 'Configuración guardada.', 'resumen-cobros' ) . '</strong></p></div>';
 	}
 
-	$api_key      = get_option( 'rc_conekta_api_key', '' );
-	$card_methods = get_option( 'rc_card_methods', 'conekta' );
-	$cash_methods = get_option( 'rc_cash_methods', 'cod' );
+	$api_key        = get_option( 'rc_conekta_api_key', '' );
+	$card_methods   = get_option( 'rc_card_methods', 'conekta' );
+	$cash_methods   = get_option( 'rc_cash_methods', 'cod' );
+	$extra_statuses = get_option( 'rc_extra_statuses', '' );
 	$iva_rate     = round( floatval( get_option( 'rc_iva_rate', 0.16 ) ) * 100, 2 );
 	$comm_credit  = round( floatval( get_option( 'rc_commission_credit', 0.036 ) ) * 100, 3 );
 	$comm_debit   = round( floatval( get_option( 'rc_commission_debit', 0.029 ) ) * 100, 3 );
@@ -245,6 +247,15 @@ function rc_render_settings() {
 							value="<?php echo esc_attr( $cash_methods ); ?>"
 							class="regular-text">
 						<p class="description"><?php esc_html_e( 'IDs separados por coma. Ej: cod, bacs, cash', 'resumen-cobros' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Estados adicionales a incluir', 'resumen-cobros' ); ?></th>
+					<td>
+						<input type="text" name="rc_extra_statuses"
+							value="<?php echo esc_attr( $extra_statuses ); ?>"
+							class="regular-text">
+						<p class="description"><?php esc_html_e( 'IDs separados por coma. Ej: recogido, entregado. Los estados "completed" y "processing" siempre se incluyen.', 'resumen-cobros' ); ?></p>
 					</td>
 				</tr>
 				<tr>
