@@ -98,8 +98,8 @@ class RC_Conekta_Client {
 			foreach ( $body['data'] as $item ) {
 				if ( ! empty( $item['charge_id'] ) ) {
 					$results[ $item['charge_id'] ] = [
-						'commission'     => isset( $item['commission'] )     ? round( $item['commission'] / 100, 2 )     : null,
-						'deposit_amount' => isset( $item['deposit_amount'] ) ? round( $item['deposit_amount'] / 100, 2 ) : null,
+						'commission'     => isset( $item['commission'] )     ? round( (float) $item['commission'], 2 )     : null,
+						'deposit_amount' => isset( $item['deposit_amount'] ) ? round( (float) $item['deposit_amount'], 2 ) : null,
 					];
 				}
 			}
