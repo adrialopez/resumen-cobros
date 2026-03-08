@@ -446,8 +446,9 @@ function rc_ajax_diagnose_order() {
 			: [ '/orders/' . urlencode( $conekta_id ), '/charges/' . urlencode( $conekta_id ) ];
 
 		$raw_calls = [];
-		foreach ( $endpoints as $ep ) {
-			$response   = wp_remote_get( $base_url . $ep, [
+
+		$do_fetch = function( string $ep ) use ( $base_url, $api_key, &$raw_calls ): ?array {
+			$response = wp_remote_get( $base_url . $ep, [
 				'headers' => [
 					'Authorization' => 'Bearer ' . $api_key,
 					'Accept'        => 'application/vnd.conekta-v2.2.0+json',
@@ -455,17 +456,22 @@ function rc_ajax_diagnose_order() {
 				],
 				'timeout' => 15,
 			] );
-
 			if ( is_wp_error( $response ) ) {
 				$raw_calls[ $ep ] = [ 'error' => $response->get_error_message() ];
-			} else {
-				$http_code  = wp_remote_retrieve_response_code( $response );
-				$body       = wp_remote_retrieve_body( $response );
-				$decoded    = json_decode( $body, true );
-				$raw_calls[ $ep ] = [
-					'http_code' => $http_code,
-					'body'      => $decoded ?: $body,
-				];
+				return null;
+			}
+			$http_code = wp_remote_retrieve_response_code( $response );
+			$decoded   = json_decode( wp_remote_retrieve_body( $response ), true );
+			$raw_calls[ $ep ] = [ 'http_code' => $http_code, 'body' => $decoded ];
+			return ( $http_code === 200 && $decoded ) ? $decoded : null;
+		};
+
+		foreach ( $endpoints as $ep ) {
+			$body = $do_fetch( $ep );
+			// Si es respuesta de order, también buscar el charge interno para ver fee
+			if ( $body && isset( $body['charges']['data'][0]['id'] ) ) {
+				$charge_id = $body['charges']['data'][0]['id'];
+				$do_fetch( '/charges/' . urlencode( $charge_id ) );
 			}
 		}
 		$info['api_raw'] = $raw_calls;

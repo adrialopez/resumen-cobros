@@ -414,10 +414,16 @@
 	}
 
 	function cardInfo( row ) {
-		let parts = [];
-		if ( row.brand ) parts.push( escHtml( row.brand.toUpperCase() ) );
-		if ( row.last4 ) parts.push( '···· ' + escHtml( row.last4 ) );
-		return parts.join( ' ' ) || '—';
+		if ( ! row.brand ) return '—';
+		const brandMap = {
+			visa:             { label: 'Visa',             color: '#1a1f71', bg: '#e8eaf6' },
+			mastercard:       { label: 'Mastercard',       color: '#eb001b', bg: '#fff0f0' },
+			amex:             { label: 'Amex',             color: '#007bc1', bg: '#e6f3fb' },
+			'american express': { label: 'Amex',          color: '#007bc1', bg: '#e6f3fb' },
+			carnet:           { label: 'Carnet',           color: '#006847', bg: '#e6f4ef' },
+		};
+		const b = brandMap[ row.brand.toLowerCase() ] || { label: row.brand.toUpperCase(), color: '#555', bg: '#f3f4f6' };
+		return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.03em;background:' + b.bg + ';color:' + b.color + ';">' + b.label + '</span>';
 	}
 
 	// -----------------------------------------------------------------------
