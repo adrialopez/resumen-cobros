@@ -3,7 +3,7 @@
    ========================================================= */
 
 .rc-wrap {
-	max-width: 1400px;
+	max-width: none;
 }
 
 /* Toolbar -------------------------------------------------- */
@@ -95,10 +95,17 @@
 
 .rc-table th,
 .rc-table td {
-	padding: 7px 10px;
+	padding: 5px 8px;
 	border: 1px solid #e0e0e0;
 	white-space: nowrap;
 	vertical-align: middle;
+}
+
+/* Cliente (col 4) y Descripción (col 5) pueden hacer wrap para ahorrar ancho */
+.rc-table td:nth-child(4),
+.rc-table td:nth-child(5) {
+	white-space: normal;
+	min-width: 100px;
 }
 
 .rc-table thead th {
@@ -106,8 +113,9 @@
 	font-weight: 700;
 	font-size: 11px;
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.03em;
 	color: #3c434a;
+	white-space: nowrap;
 }
 
 .rc-table tbody tr:nth-child(even) {
