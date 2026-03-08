@@ -1,11 +1,4 @@
-// Usar fee real de Conekta (null si no disponible — no se calcula)
-			$row['conekta_fee'] = ( $conekta_info !== null && $conekta_info['fee'] !== null )
-				? $conekta_info['fee']
-				: null;
-			$row['fee_source']  = ( $row['conekta_fee'] !== null ) ? 'conekta' : 'none';
-			$row['bbva_net']    = ( $row['conekta_fee'] !== null )
-				? round( $row['total'] - $row['conekta_fee'], 2 )
-				: null;<?php
+<?php
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
